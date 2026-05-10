@@ -1,0 +1,19 @@
+secrets.yaml
+.esphome/
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+build/
+ 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# SO
+.DS_Store
+Thumbs.db
+desktop.ini
