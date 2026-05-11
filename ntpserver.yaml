@@ -82,6 +82,33 @@ sensor:
       }
       return {};
 
+binary_sensor:
+  - platform: template
+    name: "GPS con Señal (Fix)"
+    lambda: |-
+      if (id(satelites_gps).has_state()) {
+        return id(satelites_gps).state >= 4;
+      }
+      return false;
+    icon: "mdi:crosshairs-gps"
+
+button:
+  - platform: restart
+    name: "Reiniciar NTP Server"
+    icon: "mdi:restart"
+
+light:
+  - platform: esp32_rmt_led_strip
+    chipset: WS2812
+    pin: GPIO8
+    num_leds: 1
+    rgb_order: GRB
+    name: "LED Estado NTP"
+    id: led_estado
+    internal: true   # No se expone a HA
+    default_transition_length: 0s
+    restore_mode: ALWAYS_OFF
+
 interval:
   - interval: 20ms
     then:
@@ -99,18 +126,21 @@ interval:
                      t_ha.strftime("%H:%M:%S").c_str(), 
                      diff);
           }
+  - interval: 1s
+    then:
+      - lambda: |-
+          auto call = id(led_estado).turn_on();
+          call.set_transition_length(0);
+          call.set_brightness(0.2);  // 20% de brillo, suficiente y no molesta
 
-binary_sensor:
-  - platform: template
-    name: "GPS con Señal (Fix)"
-    lambda: |-
-      if (id(satelites_gps).has_state()) {
-        return id(satelites_gps).state >= 4;
-      }
-      return false;
-    icon: "mdi:crosshairs-gps"
-
-button:
-  - platform: restart
-    name: "Reiniciar NTP Server"
-    icon: "mdi:restart"
+          if (!esphome::network::is_connected()) {          
+            // Rojo: sin WiFi
+            call.set_rgb(1.0, 0.0, 0.0);
+          } else if (!id(satelites_gps).has_state() || id(satelites_gps).state < 4) {
+            // Amarillo: WiFi OK, GPS sin fix
+            call.set_rgb(1.0, 0.5, 0.0);
+          } else {
+            // Verde: todo operativo
+            call.set_rgb(0.0, 1.0, 0.0);
+          }
+          call.perform();
